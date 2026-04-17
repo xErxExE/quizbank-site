@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuizBank — Trasforma i panieri d'esame in quiz intelligenti</title>
+  <meta name="description" content="Carica il tuo paniere PDF o DOCX, l'AI estrae le domande e genera quiz a risposta multipla con 3 livelli di difficoltà. Per studenti universitari italiani.">
+  <link rel="icon" type="image/png" href="./QuizBank-Google-512.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0e1a;
+      --bg-card: #111827;
+      --bg-card-hover: #1a2236;
+      --accent: #3b82f6;
+      --accent-light: #60a5fa;
+      --green: #10b981;
+      --green-light: #34d399;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --border: #1e293b;
+      --glow: rgba(59, 130, 246, 0.15);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* NOISE TEXTURE OVERLAY */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* NAV */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0;
+      padding: 1rem 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+      backdrop-filter: blur(20px);
+      background: rgba(10, 14, 26, 0.8);
+      border-bottom: 1px solid var(--border);
+      z-index: 100;
+    }
+
+    .logo {
+      font-weight: 800; font-size: 1.5rem;
+      background: linear-gradient(135deg, var(--accent-light), var(--green-light));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      letter-spacing: -0.5px;
+    }
+
+    .nav-links { display: flex; gap: 2rem; align-items: center; }
+    .nav-links a {
+      color: var(--text-muted); text-decoration: none; font-size: 0.9rem;
+      font-weight: 500; transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--text); }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.7rem 1.5rem; border-radius: 10px;
+      font-weight: 600; font-size: 0.95rem;
+      text-decoration: none; transition: all 0.3s; cursor: pointer; border: none;
+      font-family: 'Outfit', sans-serif;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), #2563eb);
+      color: white; box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(59, 130, 246, 0.4);
+    }
+    .btn-secondary {
+      background: transparent; color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { border-color: var(--accent); background: var(--glow); }
+    .btn-green {
+      background: linear-gradient(135deg, var(--green), #059669);
+      color: white; box-shadow: 0 4px 20px rgba(16, 185, 129, 0.3);
+    }
+    .btn-green:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(16, 185, 129, 0.4);
+    }
+
+    /* HERO */
+    .hero {
+      position: relative;
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      padding: 8rem 2rem 4rem;
+      text-align: center;
+    }
+
+    .hero-glow {
+      position: absolute;
+      width: 600px; height: 600px;
+      border-radius: 50%;
+      filter: blur(120px);
+      opacity: 0.15;
+      pointer-events: none;
+    }
+    .hero-glow-1 { top: 10%; left: 20%; background: var(--accent); }
+    .hero-glow-2 { bottom: 10%; right: 15%; background: var(--green); }
+
+    .hero-content { position: relative; z-index: 1; max-width: 800px; }
+
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.4rem 1rem; border-radius: 50px;
+      background: var(--glow); border: 1px solid rgba(59, 130, 246, 0.2);
+      font-size: 0.85rem; color: var(--accent-light); font-weight: 500;
+      margin-bottom: 2rem;
+    }
+    .hero-badge::before { content: '✦'; }
+
+    h1 {
+      font-size: clamp(2.5rem, 6vw, 4.2rem);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -1.5px;
+      margin-bottom: 1.5rem;
+    }
+    h1 .gradient {
+      background: linear-gradient(135deg, var(--accent-light), var(--green-light));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+
+    .hero-sub {
+      font-size: 1.2rem; color: var(--text-muted);
+      max-width: 600px; margin: 0 auto 2.5rem; line-height: 1.7;
+    }
+
+    .hero-ctas { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+
+    .hero-stats {
+      display: flex; gap: 3rem; justify-content: center; margin-top: 4rem;
+      padding-top: 3rem; border-top: 1px solid var(--border);
+    }
+    .hero-stat-num {
+      font-size: 2rem; font-weight: 700;
+      background: linear-gradient(135deg, var(--accent-light), var(--green-light));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .hero-stat-label { font-size: 0.85rem; color: var(--text-dim); margin-top: 0.25rem; }
+
+    /* SECTIONS */
+    section { position: relative; z-index: 1; padding: 6rem 2rem; }
+    .container { max-width: 1100px; margin: 0 auto; }
+
+    .section-label {
+      font-size: 0.8rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 3px; color: var(--accent-light); margin-bottom: 1rem;
+    }
+    .section-title {
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 700; letter-spacing: -1px; margin-bottom: 1rem;
+    }
+    .section-sub { color: var(--text-muted); font-size: 1.1rem; max-width: 600px; margin-bottom: 3rem; }
+
+    /* HOW IT WORKS — STEPS */
+    .steps { display: grid; gap: 2rem; }
+    .step {
+      display: grid; grid-template-columns: 80px 1fr; gap: 1.5rem;
+      align-items: start; padding: 2rem;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 16px; transition: all 0.3s;
+    }
+    .step:hover { border-color: var(--accent); background: var(--bg-card-hover); }
+    .step-num {
+      width: 60px; height: 60px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem; font-weight: 800;
+      background: linear-gradient(135deg, var(--accent), #2563eb);
+      color: white;
+    }
+    .step h3 { font-size: 1.3rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .step p { color: var(--text-muted); font-size: 0.95rem; }
+
+    /* FEATURES GRID */
+    .features-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+    .feature-card {
+      padding: 2rem; border-radius: 16px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      transition: all 0.3s;
+    }
+    .feature-card:hover { border-color: var(--green); transform: translateY(-4px); }
+    .feature-icon {
+      width: 48px; height: 48px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; margin-bottom: 1rem;
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(59, 130, 246, 0.15));
+    }
+    .feature-card h3 { font-size: 1.15rem; font-weight: 600; margin-bottom: 0.5rem; }
+    .feature-card p { color: var(--text-muted); font-size: 0.9rem; }
+
+    /* PRICING */
+    .pricing-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem; max-width: 900px; margin: 0 auto;
+    }
+    .price-card {
+      padding: 2.5rem; border-radius: 16px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      text-align: center;
+    }
+    .price-card.featured {
+      border-color: var(--green);
+      box-shadow: 0 0 40px rgba(16, 185, 129, 0.1);
+      position: relative;
+    }
+    .price-card.featured::before {
+      content: 'Più popolare';
+      position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+      background: linear-gradient(135deg, var(--green), #059669);
+      color: white; padding: 0.3rem 1rem; border-radius: 50px;
+      font-size: 0.75rem; font-weight: 600;
+    }
+    .price-name { font-size: 1.1rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.5rem; }
+    .price-amount { font-size: 3rem; font-weight: 800; margin-bottom: 0.25rem; }
+    .price-amount span { font-size: 1rem; font-weight: 400; color: var(--text-dim); }
+    .price-desc { color: var(--text-dim); font-size: 0.85rem; margin-bottom: 1.5rem; }
+    .price-features { list-style: none; text-align: left; margin-bottom: 2rem; }
+    .price-features li {
+      padding: 0.5rem 0; color: var(--text-muted); font-size: 0.9rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .price-features li::before { content: '✓ '; color: var(--green); font-weight: 700; }
+
+    /* CTA FINAL */
+    .cta-section {
+      text-align: center; padding: 6rem 2rem;
+      background: linear-gradient(180deg, transparent, rgba(59, 130, 246, 0.05));
+    }
+
+    /* FOOTER */
+    footer {
+      padding: 3rem 2rem; border-top: 1px solid var(--border);
+      text-align: center;
+    }
+    footer p { color: var(--text-dim); font-size: 0.85rem; }
+    footer a { color: var(--text-muted); text-decoration: none; }
+    footer a:hover { color: var(--text); }
+    .footer-links { display: flex; gap: 2rem; justify-content: center; margin-bottom: 1rem; }
+
+    /* ANIMATIONS */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .hero-content > * {
+      animation: fadeUp 0.8s ease-out backwards;
+    }
+    .hero-content > :nth-child(1) { animation-delay: 0.1s; }
+    .hero-content > :nth-child(2) { animation-delay: 0.25s; }
+    .hero-content > :nth-child(3) { animation-delay: 0.4s; }
+    .hero-content > :nth-child(4) { animation-delay: 0.55s; }
+    .hero-content > .hero-stats { animation-delay: 0.7s; }
+
+    /* RESPONSIVE */
+    @media (max-width: 768px) {
+      nav { padding: 1rem; }
+      .nav-links { display: none; }
+      .hero { padding: 7rem 1.5rem 3rem; }
+      .hero-stats { flex-direction: column; gap: 1.5rem; }
+      .step { grid-template-columns: 1fr; }
+      .step-num { width: 48px; height: 48px; font-size: 1.2rem; border-radius: 12px; }
+      .footer-links { flex-direction: column; gap: 0.5rem; }
+    }
+
+    /* STORE BADGES */
+    .store-badges { display: flex; gap: 1rem; justify-content: center; margin-top: 2rem; flex-wrap: wrap; }
+    .store-badge {
+      display: inline-flex; align-items: center; gap: 0.6rem;
+      padding: 0.8rem 1.5rem; border-radius: 12px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      color: var(--text); text-decoration: none; transition: all 0.3s;
+    }
+    .store-badge:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .store-badge-icon { font-size: 1.5rem; }
+    .store-badge-text { text-align: left; }
+    .store-badge-small { font-size: 0.65rem; color: var(--text-dim); display: block; }
+    .store-badge-big { font-size: 0.95rem; font-weight: 600; }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <div class="logo">QuizBank</div>
+    <div class="nav-links">
+      <a href="#come-funziona">Come funziona</a>
+      <a href="#funzionalita">Funzionalità</a>
+      <a href="#prezzi">Prezzi</a>
+      <a href="#scarica" class="btn btn-primary" style="padding: 0.5rem 1.2rem; font-size: 0.85rem;">Scarica gratis</a>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-glow hero-glow-1"></div>
+    <div class="hero-glow hero-glow-2"></div>
+    <div class="hero-content">
+      <div class="hero-badge">Per studenti universitari italiani</div>
+      <h1>Il tuo paniere diventa<br>un <span class="gradient">quiz intelligente</span></h1>
+      <p class="hero-sub">Carica un PDF o DOCX con le domande d'esame. L'AI estrae tutto, genera quiz a risposta multipla su 3 difficoltà, e ti mostra dove sbagli di più.</p>
+      <div class="hero-ctas">
+        <a href="#scarica" class="btn btn-primary">Inizia gratis — 5 crediti omaggio</a>
+        <a href="#come-funziona" class="btn btn-secondary">Scopri come funziona</a>
+      </div>
+      <div class="hero-stats">
+        <div>
+          <div class="hero-stat-num">30s</div>
+          <div class="hero-stat-label">Per estrarre un paniere</div>
+        </div>
+        <div>
+          <div class="hero-stat-num">3</div>
+          <div class="hero-stat-label">Livelli di difficoltà</div>
+        </div>
+        <div>
+          <div class="hero-stat-num">PDF · DOCX · CSV</div>
+          <div class="hero-stat-label">Formati supportati</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- COME FUNZIONA -->
+  <section id="come-funziona">
+    <div class="container">
+      <div class="section-label">Come funziona</div>
+      <div class="section-title">Da paniere a quiz in 4 step</div>
+      <div class="section-sub">Nessuna formattazione manuale. L'AI capisce la struttura del tuo file.</div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div>
+            <h3>Carica il paniere</h3>
+            <p>PDF, DOCX o CSV fino a 15MB. Supporta i formati più comuni dei panieri universitari italiani — domanda e risposta, a scelta multipla, numerati.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div>
+            <h3>L'AI estrae le domande</h3>
+            <p>Claude Haiku analizza il documento ed estrae ogni coppia domanda-risposta. Rivedi, modifica, elimina — hai il controllo totale prima di pubblicare.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div>
+            <h3>Genera quiz a risposta multipla</h3>
+            <p>L'AI crea 3 distrattori realistici per ogni domanda, su 3 livelli: Facile, Medio, Difficile. Le domande sbagliate tornano prima — studi solo dove serve.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div>
+            <h3>Monitora i tuoi risultati</h3>
+            <p>Dashboard con grafici, heatmap di studio, tracking degli errori ricorrenti. Sai esattamente cosa ripassare prima dell'esame.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FUNZIONALITÀ -->
+  <section id="funzionalita">
+    <div class="container">
+      <div class="section-label">Funzionalità</div>
+      <div class="section-title">Tutto quello che serve per preparare l'esame</div>
+      <div class="section-sub">Costruito per come studiano davvero gli universitari.</div>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">📄</div>
+          <h3>Parsing intelligente</h3>
+          <p>9+ parser regex + AI. Riconosce automaticamente il formato del tuo paniere — numerato, D:/R:, a scelta multipla, inline.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🧠</div>
+          <h3>Distrattori AI realistici</h3>
+          <p>Claude genera risposte sbagliate verosimili che testano davvero la tua comprensione, non opzioni ovviamente errate.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔄</div>
+          <h3>Le sbagliate tornano prima</h3>
+          <p>Il sistema ripropone più spesso le domande che sbagli. Studi in modo mirato, non a caso.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📊</div>
+          <h3>Statistiche dettagliate</h3>
+          <p>Andamento nel tempo, distribuzione risposte, heatmap settimanale, classifica errori ricorrenti per banca dati.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">⚡</div>
+          <h3>Hard mode + Timer</h3>
+          <p>Timer countdown, ordine casuale, hard mode senza feedback immediato. Simula le condizioni dell'esame reale.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">✏️</div>
+          <h3>Modifica tutto</h3>
+          <p>Rivedi ogni domanda, risposta e distrattore prima di iniziare. Elimina le domande irrilevanti, correggi gli errori.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PREZZI -->
+  <section id="prezzi">
+    <div class="container">
+      <div class="section-label">Prezzi</div>
+      <div class="section-title">Parti gratis, scala quando vuoi</div>
+      <div class="section-sub">5 crediti omaggio alla registrazione. 1 credito = 1 operazione AI.</div>
+      <div class="pricing-grid">
+        <div class="price-card">
+          <div class="price-name">Starter</div>
+          <div class="price-amount">€1.99 <span>/ 12 crediti</span></div>
+          <div class="price-desc">Per provare con un paniere piccolo</div>
+          <ul class="price-features">
+            <li>12 operazioni AI</li>
+            <li>Parsing PDF e DOCX</li>
+            <li>Quiz illimitati</li>
+            <li>Statistiche complete</li>
+          </ul>
+          <a href="#scarica" class="btn btn-secondary" style="width: 100%; justify-content: center;">Inizia</a>
+        </div>
+        <div class="price-card featured">
+          <div class="price-name">Plus</div>
+          <div class="price-amount">€8.99 <span>/ 80 crediti</span></div>
+          <div class="price-desc">Per una sessione d'esame completa</div>
+          <ul class="price-features">
+            <li>80 operazioni AI</li>
+            <li>Parsing PDF e DOCX</li>
+            <li>3 livelli di difficoltà</li>
+            <li>Quiz illimitati</li>
+            <li>Statistiche complete</li>
+          </ul>
+          <a href="#scarica" class="btn btn-green" style="width: 100%; justify-content: center;">Scegli Plus</a>
+        </div>
+        <div class="price-card">
+          <div class="price-name">Pro</div>
+          <div class="price-amount">€19.99 <span>/ 200 crediti</span></div>
+          <div class="price-desc">Per tutto l'anno accademico</div>
+          <ul class="price-features">
+            <li>200 operazioni AI</li>
+            <li>Miglior prezzo per credito</li>
+            <li>Parsing PDF e DOCX</li>
+            <li>Quiz illimitati</li>
+            <li>Statistiche complete</li>
+          </ul>
+          <a href="#scarica" class="btn btn-secondary" style="width: 100%; justify-content: center;">Scegli Pro</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA FINALE -->
+  <section class="cta-section" id="scarica">
+    <div class="container" style="max-width: 700px;">
+      <div class="section-title" style="margin-bottom: 1rem;">Pronto per il prossimo esame?</div>
+      <p class="section-sub" style="margin: 0 auto 2rem; text-align: center;">Scarica QuizBank, carica il tuo primo paniere e inizia a studiare in modo intelligente. 5 crediti gratuiti inclusi.</p>
+      <div class="store-badges">
+        <a href="#" class="store-badge">
+          <div class="store-badge-icon">🍎</div>
+          <div class="store-badge-text">
+            <span class="store-badge-small">Scarica su</span>
+            <span class="store-badge-big">App Store</span>
+          </div>
+        </a>
+        <a href="#" class="store-badge">
+          <div class="store-badge-icon">▶️</div>
+          <div class="store-badge-text">
+            <span class="store-badge-small">Disponibile su</span>
+            <span class="store-badge-big">Google Play</span>
+          </div>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-links">
+      <a href="privacy.html">Privacy Policy</a>
+      <a href="terms.html">Termini di Servizio</a>
+      <a href="mailto:support@quizbank.app">Contatti</a>
+    </div>
+    <p>© 2026 QuizBank. Tutti i diritti riservati.</p>
+  </footer>
+
+</body>
+</html>
